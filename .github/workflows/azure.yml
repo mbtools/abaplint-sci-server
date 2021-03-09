@@ -1,0 +1,55 @@
+on: [push]
+name: Azure_Container_Workflow
+
+jobs:
+    build-and-deploy:
+        runs-on: ubuntu-latest
+        steps:
+
+        - name: 'abaplint: Checkout'
+          uses: actions/checkout@master
+          
+        - name: 'abaplint: Determine Version'
+          id: determine_version
+          run: |
+            GIT_VERSION=`git rev-list HEAD --count`
+            echo Git Version: $GIT_VERSION
+            ABAPLINT_VERSION=`jq '.dependencies."@abaplint/core".version' -r package-lock.json`
+            echo abaplint Version: $ABAPLINT_VERSION
+            NEW_VERSION=`echo ${GIT_VERSION}-${ABAPLINT_VERSION}`
+            echo New Version: $NEW_VERSION
+            echo "::set-output name=NEW_VERSION::$NEW_VERSION"
+
+        - name: 'Azure: Login'
+          uses: azure/login@v1
+          with:
+            creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+        - name: 'Azure: Docker Login'
+          uses: azure/docker-login@v1
+          with:
+            login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+            username: ${{ secrets.REGISTRY_USERNAME }}
+            password: ${{ secrets.REGISTRY_PASSWORD }}
+
+        - name: 'Docker: Build and Push Image'
+          run: |
+            docker build . -f docker/Dockerfile -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/abaplint-backend:${{ steps.determine_version.outputs.NEW_VERSION }}
+            docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/abaplint-backend:${{ steps.determine_version.outputs.NEW_VERSION }}
+            
+        - name: 'Azure: Deploy to Container Instance'
+          uses: 'azure/aci-deploy@v1'
+          with:
+            resource-group: ${{ secrets.RESOURCE_GROUP }}
+            dns-name-label: ${{ secrets.DNS_PREFIX }}-abaplint-backend-${{ github.run_number }}
+            image: ${{ secrets.REGISTRY_LOGIN_SERVER }}/abaplint-backend:${{ steps.determine_version.outputs.NEW_VERSION }}
+            registry-login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+            registry-username: ${{ secrets.REGISTRY_USERNAME }}
+            registry-password: ${{ secrets.REGISTRY_PASSWORD }}
+            name: abaplint-backend
+            ports: 80 3000
+            location: ${{ secrets.LOCATION }}
+
+        - name: 'Docker: Run'
+          run: |
+            docker run -d --rm -p 3000:3000 ${{ secrets.REGISTRY_LOGIN_SERVER }}/abaplint-backend:${{ steps.determine_version.outputs.NEW_VERSION }}
