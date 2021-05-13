@@ -41,7 +41,7 @@ jobs:
           uses: 'azure/aci-deploy@v1'
           with:
             resource-group: ${{ secrets.RESOURCE_GROUP }}
-            dns-name-label: ${{ secrets.DNS_PREFIX }}-abaplint-backend-${{ github.run_number }}
+            dns-name-label: ${{ secrets.DNS_PREFIX }}-abaplint-backend
             image: ${{ secrets.REGISTRY_LOGIN_SERVER }}/abaplint-backend:${{ steps.determine_version.outputs.NEW_VERSION }}
             registry-login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
             registry-username: ${{ secrets.REGISTRY_USERNAME }}
