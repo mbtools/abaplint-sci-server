@@ -11,6 +11,7 @@ on:
 jobs:
   test-js:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.repository == 'abaplint/abaplint-sci-server'
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-node@v2
@@ -23,6 +24,7 @@ jobs:
 
   test-docker:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.repository == 'abaplint/abaplint-sci-server'
     steps:
     # This job uses scripts, not docker actions. To keep reusability and control consistency
     -
